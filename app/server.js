@@ -17,6 +17,9 @@ app.set('view engine', 'html');
 // Load messages worker
 require('./messages')(app);
 
+// Init firebase admin
+require('./firebase-admin').initFirebaseAdmin();
+
 // load route
 require('./route')(app);
 

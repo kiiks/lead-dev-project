@@ -2,11 +2,10 @@ const formValidator = require('./form_validator');
 const photoModel = require('./photo_model');
 const { PubSub } = require('@google-cloud/pubsub');
 const { Storage } = require('@google-cloud/storage');
-const { initializeApp, applicationDefault } = require('firebase-admin/app');
 const moment = require('moment')
 require('dotenv').config()
 
-async function publish(data) {
+async function publish(data, tags) {
   const projectId = process.env.GOOGLE_APPLICATION_CREDENTIALS.project_id;
   const topicNameOrId = 'dmi2-7';
   
@@ -15,13 +14,13 @@ async function publish(data) {
 
   // Get topic
   const topic = await pubsub.topic(topicNameOrId);
-
+  
+  data.unshift({ tags: tags });
   // Send a message to the topic
   topic.publishMessage({ data: Buffer.from(JSON.stringify(data)) });
 }
 
 function route(app) {
-  app.get('/', (req, res) => {
   app.get('/', async (req, res) => {
     const tags = req.query.tags;
     const tagmode = req.query.tagmode;
@@ -100,7 +99,7 @@ function route(app) {
       .then(photos => {
         ejsLocalVariables.photos = photos;
         ejsLocalVariables.searchResults = true;
-        publish(photos);
+        publish(photos, tags);
         return res.render('index', ejsLocalVariables);
       })
       .catch(error => {

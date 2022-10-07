@@ -8,20 +8,27 @@ function main(app) {
   const { Storage } = require('@google-cloud/storage');
   const ZipStream = require('zip-stream');
   const request =  require('request');
+  const { loadInDB } = require('./firebase-admin');
   require('dotenv').config()
 
-  // Creates a client; cache this for further use
   const pubSubClient = new PubSub();
+  
+  let currentZipFileName = null;
 
   function listenForMessages() {
     const subscription = pubSubClient.subscription(subscriptionNameOrId);
 
-    // Create an event handler to handle messages
     let messageCount = 0;
     const messageHandler = async message => {
         const data = JSON.parse(message.data);
+        // Format is not good
+        if (!data[0]) return;
+
+        currentZipFileName = data[0].tags;
+        
         const medias = [];
-        for(let i = 0; i < 10; i++) {
+        for(let i = 1; i < 11; i++) {
+            if (data[i] == null) return;
             medias.push({ name: 'photo' + i + '.jpg', url: data[i].media.m });
         }
 
@@ -29,8 +36,7 @@ function main(app) {
         const storage = new Storage();
         const file = await storage
             .bucket('dmii2022bucket')
-            .file('public/users/photos_archive.zip');
-
+            .file('public/users/' + currentZipFileName + '.zip');
         const stream = file.createWriteStream({
             metadata: {
                 contentType: 'application/zip',
@@ -38,9 +44,7 @@ function main(app) {
             },
             resumable: false
         });
-
         zip.pipe(stream);
-
         function addNextFile() {
             var elem = medias.shift()
             var stream = request(elem.url)
@@ -65,7 +69,16 @@ function main(app) {
             stream.on('finish', () => {
                 console.log('successfully zipped photos !')
                 process.env.PHOTOS_ZIPPED = true
-                app.get('/');
+
+                let zipFile = null;
+                storage.bucket('dmii2022bucket').file('public/users/' + currentZipFileName + '.zip').createReadStream()
+                .on('data', (file) => {
+                    zipFile = file;
+                }).on('end', () => {
+                    loadInDB(zipFile, new Date(Date.now()).getHours(), currentZipFileName);
+                    currentZipFileName = null;
+                });
+
                 resolve('Ok');
             });
         });
