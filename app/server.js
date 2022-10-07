@@ -14,6 +14,9 @@ app.engine('.html', require('ejs').__express);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'html');
 
+// Load messages worker
+require('./messages')(app);
+
 // load route
 require('./route')(app);
 

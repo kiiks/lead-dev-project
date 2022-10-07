@@ -24,5 +24,8 @@
     <% } %>
 
   </div>
-
+  <form role="form" method="post" action="/zip?tags=<%= tagsParameter %>">
+    <input type="hidden" name="zip" value="">
+    <button type="submit" class="btn btn-primary">Download ZIP</button>
+  </form>
 </div>
